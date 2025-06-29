@@ -3,17 +3,18 @@ import { useLanguage, Language } from '../contexts/LanguageContext';
 import { Globe, ChevronDown } from 'lucide-react';
 
 const LanguageSelector: React.FC = () => {
-  const { language, setLanguage, t } = useLanguage();
+  const { language, setLanguage } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
 
+  // Language options with native names (always displayed in their native script)
   const languages: { code: Language; name: string; flag: string }[] = [
-    { code: 'en', name: t('language.english'), flag: '🇺🇸' },
-    { code: 'ar', name: t('language.arabic'), flag: '🇸🇦' },
-    { code: 'fr', name: t('language.french'), flag: '🇫🇷' },
-    { code: 'es', name: t('language.spanish'), flag: '🇪🇸' },
-    { code: 'de', name: t('language.german'), flag: '🇩🇪' },
-    { code: 'it', name: t('language.italian'), flag: '🇮🇹' },
-    { code: 'hi', name: t('language.hindi'), flag: '🇮🇳' },
+    { code: 'en', name: 'English', flag: '🇺🇸' },
+    { code: 'ar', name: 'العربية', flag: '🇸🇦' },
+    { code: 'fr', name: 'Français', flag: '🇫🇷' },
+    { code: 'es', name: 'Español', flag: '🇪🇸' },
+    { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
+    { code: 'it', name: 'Italiano', flag: '🇮🇹' },
+    { code: 'hi', name: 'हिन्दी', flag: '🇮🇳' },
   ];
 
   const currentLanguage = languages.find(lang => lang.code === language);
