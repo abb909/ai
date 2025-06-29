@@ -9,6 +9,7 @@ import { sendTelegramMessage, formatSignalForTelegram } from '../services/telegr
 import { db } from '../config/firebase';
 import { School } from '../types';
 import AnalysisDisplay from '../components/AnalysisDisplay';
+import TradingViewChart from '../components/TradingViewChart';
 import { 
   TrendingUp, 
   Zap, 
@@ -623,6 +624,15 @@ const Dashboard: React.FC = () => {
               </div>
             )}
           </div>
+        </div>
+
+        {/* TradingView Chart Widget */}
+        <div className="mt-8">
+          <TradingViewChart 
+            symbol={selectedPair} 
+            height={600}
+            theme="dark"
+          />
         </div>
 
         {/* Analysis Display */}
