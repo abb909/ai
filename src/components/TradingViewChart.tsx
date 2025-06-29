@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface TradingViewChartProps {
@@ -34,35 +34,7 @@ const TRADINGVIEW_LOCALE_MAPPING: { [key: string]: string } = {
   'fr': 'fr',
   'de': 'de',
   'it': 'it',
-  'ja': 'ja',
-  'ko': 'ko',
-  'pt': 'pt',
-  'ru': 'ru',
-  'zh': 'zh',
   'hi': 'en', // Hindi not supported, fallback to English
-  'tr': 'tr',
-  'nl': 'nl',
-  'sv': 'sv',
-  'pl': 'pl',
-  'th': 'th',
-  'vi': 'vi',
-  'id': 'id',
-  'ms': 'ms',
-  'he': 'he',
-  'cs': 'cs',
-  'da': 'da',
-  'fi': 'fi',
-  'no': 'no',
-  'hu': 'hu',
-  'ro': 'ro',
-  'sk': 'sk',
-  'sl': 'sl',
-  'bg': 'bg',
-  'hr': 'hr',
-  'et': 'et',
-  'lv': 'lv',
-  'lt': 'lt',
-  'uk': 'uk'
 };
 
 const TradingViewChart: React.FC<TradingViewChartProps> = ({ 
@@ -70,9 +42,8 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
   height = 600, 
   theme = 'dark' 
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const widgetRef = useRef<any>(null);
   const { language } = useLanguage();
+  const [iframeKey, setIframeKey] = useState(0);
   
   // Get the correct TradingView symbol
   const getTradingViewSymbol = (symbol: string): string => {
@@ -84,141 +55,69 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
     return TRADINGVIEW_LOCALE_MAPPING[language] || 'en';
   };
 
+  // Force iframe refresh when symbol changes
   useEffect(() => {
-    if (!containerRef.current) return;
+    setIframeKey(prev => prev + 1);
+  }, [symbol, language, theme]);
 
-    // Clear previous widget
-    if (widgetRef.current) {
-      try {
-        widgetRef.current.remove();
-      } catch (e) {
-        console.warn('Error removing previous widget:', e);
-      }
-      widgetRef.current = null;
-    }
+  const tradingViewSymbol = getTradingViewSymbol(symbol);
+  const tradingViewLocale = getTradingViewLocale(language);
+  
+  // Create TradingView widget configuration
+  const widgetConfig = {
+    autosize: true,
+    symbol: tradingViewSymbol,
+    interval: "5",
+    timezone: "Etc/UTC",
+    theme: theme === 'dark' ? 'dark' : 'light',
+    style: "1", // Candlestick
+    locale: tradingViewLocale,
+    toolbar_bg: theme === 'dark' ? "#1a1a1a" : "#f1f3f6",
+    enable_publishing: false,
+    allow_symbol_change: true,
+    hide_top_toolbar: false,
+    hide_legend: false,
+    save_image: false,
+    hide_volume: false,
+    studies: ["Volume@tv-basicstudies"],
+    show_popup_button: false,
+    popup_width: "1000",
+    popup_height: "650"
+  };
 
-    // Clear container
-    containerRef.current.innerHTML = '';
+  // Create the iframe URL with all parameters
+  const createIframeUrl = () => {
+    const baseUrl = 'https://www.tradingview.com/widgetembed/';
+    const params = new URLSearchParams({
+      frameElementId: 'tradingview_chart',
+      symbol: widgetConfig.symbol,
+      interval: widgetConfig.interval,
+      hidesidetoolbar: '1',
+      symboledit: '1',
+      saveimage: '0',
+      toolbarbg: widgetConfig.toolbar_bg,
+      studies: 'Volume@tv-basicstudies',
+      theme: widgetConfig.theme,
+      style: widgetConfig.style,
+      timezone: widgetConfig.timezone,
+      locale: widgetConfig.locale,
+      withdateranges: '1',
+      hide_side_toolbar: '0',
+      allow_symbol_change: '1',
+      details: '1',
+      hotlist: '1',
+      calendar: '1',
+      show_popup_button: '0',
+      studies_overrides: '{}',
+      overrides: '{}',
+      enabled_features: '[]',
+      disabled_features: '[]'
+    });
 
-    const tradingViewSymbol = getTradingViewSymbol(symbol);
-    const tradingViewLocale = getTradingViewLocale(language);
-    
-    // Create unique container ID
-    const containerId = `tradingview_${Date.now()}`;
-    
-    // Create the widget container
-    const widgetDiv = document.createElement('div');
-    widgetDiv.id = containerId;
-    widgetDiv.style.height = '100%';
-    widgetDiv.style.width = '100%';
-    
-    containerRef.current.appendChild(widgetDiv);
+    return `${baseUrl}?${params.toString()}`;
+  };
 
-    // Load TradingView widget
-    const loadWidget = () => {
-      // Check if TradingView is available
-      if (typeof (window as any).TradingView === 'undefined') {
-        // Load TradingView library first
-        const script = document.createElement('script');
-        script.src = 'https://s3.tradingview.com/tv.js';
-        script.async = true;
-        script.onload = () => {
-          createWidget();
-        };
-        script.onerror = () => {
-          console.error('Failed to load TradingView library');
-          showError('Failed to load TradingView library');
-        };
-        document.head.appendChild(script);
-      } else {
-        createWidget();
-      }
-    };
-
-    const createWidget = () => {
-      try {
-        const TradingView = (window as any).TradingView;
-        
-        if (!TradingView || !TradingView.widget) {
-          console.error('TradingView widget not available');
-          showError('TradingView widget not available');
-          return;
-        }
-
-        // Widget configuration
-        const config = {
-          autosize: true,
-          symbol: tradingViewSymbol,
-          interval: "5",
-          timezone: "Etc/UTC",
-          theme: theme === 'dark' ? 'dark' : 'light',
-          style: "1", // Candlestick
-          locale: tradingViewLocale,
-          toolbar_bg: theme === 'dark' ? "#1a1a1a" : "#f1f3f6",
-          enable_publishing: false,
-          allow_symbol_change: false,
-          container_id: containerId,
-          hide_top_toolbar: false,
-          hide_legend: false,
-          save_image: false,
-          hide_volume: false,
-          studies: [
-            "Volume@tv-basicstudies"
-          ],
-          show_popup_button: false,
-          popup_width: "1000",
-          popup_height: "650",
-          support_host: "https://www.tradingview.com"
-        };
-
-        // Create the widget
-        widgetRef.current = new TradingView.widget(config);
-        
-        // Handle widget ready event - check if onChartReady exists
-        if (widgetRef.current && typeof widgetRef.current.onChartReady === 'function') {
-          widgetRef.current.onChartReady(() => {
-            console.log('TradingView chart loaded successfully for', tradingViewSymbol);
-          });
-        } else {
-          console.warn('TradingView widget onChartReady method not available');
-        }
-
-      } catch (error) {
-        console.error('Error creating TradingView widget:', error);
-        showError('Error creating TradingView widget');
-      }
-    };
-
-    const showError = (message: string) => {
-      if (containerRef.current) {
-        containerRef.current.innerHTML = `
-          <div class="flex items-center justify-center h-full">
-            <div class="text-center">
-              <div class="text-red-400 mb-2">⚠️</div>
-              <p class="text-gray-400">${message}</p>
-              <p class="text-gray-500 text-sm mt-2">${tradingViewSymbol}</p>
-            </div>
-          </div>
-        `;
-      }
-    };
-
-    // Start loading with a small delay to ensure DOM is ready
-    const timeoutId = setTimeout(loadWidget, 100);
-
-    // Cleanup function
-    return () => {
-      clearTimeout(timeoutId);
-      if (widgetRef.current) {
-        try {
-          widgetRef.current.remove();
-        } catch (e) {
-          console.warn('Error during cleanup:', e);
-        }
-        widgetRef.current = null;
-      }
-    };
-  }, [symbol, theme, language]);
+  const iframeUrl = createIframeUrl();
 
   return (
     <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 p-6">
@@ -241,16 +140,41 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
       </div>
 
       <div 
-        ref={containerRef}
-        className="w-full rounded-lg overflow-hidden bg-gray-900"
+        className="w-full rounded-lg overflow-hidden bg-gray-900 relative"
         style={{ height: `${height}px`, minHeight: '400px' }}
       >
-        {/* Loading placeholder */}
-        <div className="flex items-center justify-center h-full">
+        <iframe
+          key={iframeKey}
+          src={iframeUrl}
+          width="100%"
+          height="100%"
+          frameBorder="0"
+          allowTransparency={true}
+          scrolling="no"
+          allowFullScreen={true}
+          style={{
+            display: 'block',
+            width: '100%',
+            height: '100%',
+            margin: '0px',
+            padding: '0px',
+            border: 'none'
+          }}
+          title={`TradingView Chart - ${tradingViewSymbol}`}
+          onLoad={() => {
+            console.log('TradingView chart loaded successfully for', tradingViewSymbol);
+          }}
+          onError={(e) => {
+            console.error('TradingView iframe failed to load:', e);
+          }}
+        />
+        
+        {/* Loading overlay - will be hidden once iframe loads */}
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-900 pointer-events-none opacity-0 transition-opacity duration-300">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
             <p className="text-gray-400">Loading TradingView Chart...</p>
-            <p className="text-gray-500 text-sm mt-2">{getTradingViewSymbol(symbol)}</p>
+            <p className="text-gray-500 text-sm mt-2">{tradingViewSymbol}</p>
           </div>
         </div>
       </div>
@@ -259,15 +183,23 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
       <div className="mt-4 p-3 bg-black/20 rounded-lg">
         <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-400">
           <div className="flex items-center space-x-4">
-            <span>Symbol: {getTradingViewSymbol(symbol)}</span>
+            <span>Symbol: {tradingViewSymbol}</span>
             <span>Timeframe: Multiple</span>
             <span>Provider: TradingView</span>
+            <span>Language: {tradingViewLocale.toUpperCase()}</span>
           </div>
           <div className="flex items-center space-x-2">
             <span className="text-green-400">● Live</span>
             <span>Real-time data</span>
           </div>
         </div>
+      </div>
+
+      {/* Chart Controls Info */}
+      <div className="mt-2 p-2 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+        <p className="text-blue-400 text-xs">
+          💡 <strong>Chart Controls:</strong> Use the toolbar within the chart to change timeframes (5m, 15m, 1h, 4h), add indicators, and customize the view. The chart automatically updates when you select a different trading pair.
+        </p>
       </div>
     </div>
   );
