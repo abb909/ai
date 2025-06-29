@@ -34,7 +34,7 @@ import {
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
-  const { t, isRTL } = useLanguage();
+  const { t, isRTL, language } = useLanguage(); // Add language from context
   const [schools, setSchools] = useState<School[]>([]);
   const [selectedSchool, setSelectedSchool] = useState('');
   const [selectedPair, setSelectedPair] = useState('XAUUSD');
@@ -155,13 +155,15 @@ const Dashboard: React.FC = () => {
       const school = schools.find(s => s.id === selectedSchool);
       if (!school) throw new Error('Selected school not found');
 
-      console.log('Generating signal with market data...');
+      console.log(`Generating signal in ${language} language...`);
       
+      // Pass the current language to the AI service
       const result = await generateTradingSignalWithRealData({
         symbol: selectedPair,
         marketData,
         schoolPrompt: school.prompt,
-        provider: aiProvider
+        provider: aiProvider,
+        language: language // Pass user's selected language
       });
 
       // Save recommendation with structured signal data
@@ -252,6 +254,22 @@ const Dashboard: React.FC = () => {
           <p className="text-gray-300 text-sm sm:text-base">
             {t('dashboard.subtitle')}
           </p>
+        </div>
+
+        {/* Language Indicator */}
+        <div className="mb-4 sm:mb-6">
+          <div className="flex items-center space-x-2 px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-400 text-sm">
+            <Globe className="h-4 w-4" />
+            <span className="font-medium">
+              {language === 'en' && 'Analysis Language: English'}
+              {language === 'ar' && 'لغة التحليل: العربية'}
+              {language === 'fr' && 'Langue d\'analyse: Français'}
+              {language === 'es' && 'Idioma de análisis: Español'}
+              {language === 'de' && 'Analysesprache: Deutsch'}
+              {language === 'it' && 'Lingua di analisi: Italiano'}
+              {language === 'hi' && 'विश्लेषण भाषा: हिन्दी'}
+            </span>
+          </div>
         </div>
 
         {/* API Status Banner */}
@@ -549,6 +567,18 @@ const Dashboard: React.FC = () => {
                   <span className="text-gray-300">{t('stats.dataSource')}:</span>
                   <span className={`font-semibold ${apiStatus === 'connected' ? 'text-green-400' : 'text-yellow-400'}`}>
                     {apiStatus === 'connected' ? t('stats.live') : t('stats.demo')}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-300">Analysis Language:</span>
+                  <span className="text-blue-400 font-semibold">
+                    {language === 'en' && 'English'}
+                    {language === 'ar' && 'العربية'}
+                    {language === 'fr' && 'Français'}
+                    {language === 'es' && 'Español'}
+                    {language === 'de' && 'Deutsch'}
+                    {language === 'it' && 'Italiano'}
+                    {language === 'hi' && 'हिन्दी'}
                   </span>
                 </div>
                 {user.plan === 'elite' && (

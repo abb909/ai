@@ -1,4 +1,4 @@
-// Enhanced GPT API integration with professional trading prompts
+// Enhanced GPT API integration with multilingual support
 const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
@@ -10,6 +10,7 @@ export interface TradingAnalysisRequest {
   marketData: any;
   schoolPrompt: string;
   provider?: AIProvider;
+  language?: string; // Add language parameter
 }
 
 export interface TradingAnalysisResponse {
@@ -21,11 +22,100 @@ export interface TradingAnalysisResponse {
   takeProfit?: number;
 }
 
-// Professional trading prompt template
-const createTradingPrompt = (schoolPrompt: string, symbol: string, marketData: any): string => {
-  const jsonData = JSON.stringify(marketData, null, 2);
+// Language-specific trading prompts
+const getLanguageInstructions = (language: string): string => {
+  const instructions = {
+    en: "Please respond in English with professional trading terminology.",
+    ar: "يرجى الرد باللغة العربية باستخدام المصطلحات المهنية للتداول. استخدم المصطلحات المالية الصحيحة والواضحة.",
+    fr: "Veuillez répondre en français en utilisant une terminologie de trading professionnelle.",
+    es: "Por favor responde en español usando terminología profesional de trading.",
+    de: "Bitte antworten Sie auf Deutsch mit professioneller Trading-Terminologie.",
+    it: "Si prega di rispondere in italiano utilizzando terminologia professionale di trading.",
+    hi: "कृपया व्यावसायिक ट्रेडिंग शब्दावली का उपयोग करते हुए हिंदी में उत्तर दें।"
+  };
   
-  return `You are an elite-level financial market analyst and trading assistant, specialized in short-term technical analysis of assets like Gold (XAU/USD), indices, and currencies.
+  return instructions[language as keyof typeof instructions] || instructions.en;
+};
+
+// Language-specific signal summary format
+const getSignalSummaryFormat = (language: string): string => {
+  const formats = {
+    en: `SIGNAL SUMMARY:
+Pair: [SYMBOL]
+Type: [BUY/SELL/HOLD]
+Entry: [price or "Wait for confirmation"]
+Stop Loss: [price]
+Take Profit 1: [price]
+Take Profit 2: [price]
+Probability: [percentage]%`,
+
+    ar: `ملخص الإشارة:
+الزوج: [SYMBOL]
+النوع: [شراء/بيع/انتظار]
+الدخول: [السعر أو "انتظار التأكيد"]
+وقف الخسارة: [السعر]
+جني الأرباح 1: [السعر]
+جني الأرباح 2: [السعر]
+الاحتمالية: [النسبة المئوية]%`,
+
+    fr: `RÉSUMÉ DU SIGNAL:
+Paire: [SYMBOL]
+Type: [ACHAT/VENTE/ATTENDRE]
+Entrée: [prix ou "Attendre confirmation"]
+Stop Loss: [prix]
+Take Profit 1: [prix]
+Take Profit 2: [prix]
+Probabilité: [pourcentage]%`,
+
+    es: `RESUMEN DE SEÑAL:
+Par: [SYMBOL]
+Tipo: [COMPRA/VENTA/ESPERAR]
+Entrada: [precio o "Esperar confirmación"]
+Stop Loss: [precio]
+Take Profit 1: [precio]
+Take Profit 2: [precio]
+Probabilidad: [porcentaje]%`,
+
+    de: `SIGNAL ZUSAMMENFASSUNG:
+Paar: [SYMBOL]
+Typ: [KAUF/VERKAUF/WARTEN]
+Einstieg: [Preis oder "Auf Bestätigung warten"]
+Stop Loss: [Preis]
+Take Profit 1: [Preis]
+Take Profit 2: [Preis]
+Wahrscheinlichkeit: [Prozent]%`,
+
+    it: `RIASSUNTO SEGNALE:
+Coppia: [SYMBOL]
+Tipo: [ACQUISTO/VENDITA/ATTESA]
+Entrata: [prezzo o "Attendere conferma"]
+Stop Loss: [prezzo]
+Take Profit 1: [prezzo]
+Take Profit 2: [prezzo]
+Probabilità: [percentuale]%`,
+
+    hi: `सिग्नल सारांश:
+जोड़ी: [SYMBOL]
+प्रकार: [खरीदना/बेचना/प्रतीक्षा]
+प्रवेश: [मूल्य या "पुष्टि की प्रतीक्षा"]
+स्टॉप लॉस: [मूल्य]
+टेक प्रॉफिट 1: [मूल्य]
+टेक प्रॉफिट 2: [मूल्य]
+संभावना: [प्रतिशत]%`
+  };
+  
+  return formats[language as keyof typeof formats] || formats.en;
+};
+
+// Professional trading prompt template with multilingual support
+const createTradingPrompt = (schoolPrompt: string, symbol: string, marketData: any, language: string = 'en'): string => {
+  const jsonData = JSON.stringify(marketData, null, 2);
+  const languageInstruction = getLanguageInstructions(language);
+  const signalFormat = getSignalSummaryFormat(language);
+  
+  return `${languageInstruction}
+
+You are an elite-level financial market analyst and trading assistant, specialized in short-term technical analysis of assets like Gold (XAU/USD), indices, and currencies.
 
 Your task is to generate highly detailed, actionable trade recommendations based on raw candlestick data (OHLC), focusing on the 5-minute and 15-minute timeframes, while considering the context of the 1-hour and 4-hour charts.
 
@@ -94,14 +184,7 @@ You are allowed to use only ONE indicator: *ATR (Average True Range)* (14-period
 
 IMPORTANT: At the end of your analysis, provide a structured summary in this exact format:
 
-SIGNAL SUMMARY:
-Pair: [SYMBOL]
-Type: [BUY/SELL/HOLD]
-Entry: [price or "Wait for confirmation"]
-Stop Loss: [price]
-Take Profit 1: [price]
-Take Profit 2: [price]
-Probability: [percentage]%
+${signalFormat}
 
 📝 Format your analysis like a professional trader's briefing note — clean, structured, and concise — as if you're advising a prop trading firm.
 Be as brief as possible in your answer and give me only the important points such as the recommendation, the reason for entering and its success rate.
@@ -116,19 +199,108 @@ Here is the multi-timeframe candlestick data:
 ${jsonData}`;
 };
 
-// Function to extract structured signal data from AI response
-export const extractSignalData = (response: string, symbol: string): any => {
+// Function to extract structured signal data from AI response (multilingual)
+export const extractSignalData = (response: string, symbol: string, language: string = 'en'): any => {
   try {
-    // Look for the SIGNAL SUMMARY section
-    const summaryMatch = response.match(/SIGNAL SUMMARY:([\s\S]*?)(?:\n\n|$)/i);
+    // Language-specific patterns for signal summary extraction
+    const summaryPatterns = {
+      en: /SIGNAL SUMMARY:([\s\S]*?)(?:\n\n|$)/i,
+      ar: /ملخص الإشارة:([\s\S]*?)(?:\n\n|$)/i,
+      fr: /RÉSUMÉ DU SIGNAL:([\s\S]*?)(?:\n\n|$)/i,
+      es: /RESUMEN DE SEÑAL:([\s\S]*?)(?:\n\n|$)/i,
+      de: /SIGNAL ZUSAMMENFASSUNG:([\s\S]*?)(?:\n\n|$)/i,
+      it: /RIASSUNTO SEGNALE:([\s\S]*?)(?:\n\n|$)/i,
+      hi: /सिग्नल सारांश:([\s\S]*?)(?:\n\n|$)/i
+    };
+
+    // Field name patterns for different languages
+    const fieldPatterns = {
+      en: {
+        pair: /(?:Pair|Symbol):\s*([^\n]+)/i,
+        type: /Type:\s*([^\n]+)/i,
+        entry: /Entry:\s*([^\n]+)/i,
+        stopLoss: /Stop Loss:\s*([^\n]+)/i,
+        takeProfit1: /Take Profit 1:\s*([^\n]+)/i,
+        takeProfit2: /Take Profit 2:\s*([^\n]+)/i,
+        probability: /Probability:\s*([^\n]+)/i
+      },
+      ar: {
+        pair: /(?:الزوج|الرمز):\s*([^\n]+)/i,
+        type: /النوع:\s*([^\n]+)/i,
+        entry: /الدخول:\s*([^\n]+)/i,
+        stopLoss: /وقف الخسارة:\s*([^\n]+)/i,
+        takeProfit1: /جني الأرباح 1:\s*([^\n]+)/i,
+        takeProfit2: /جني الأرباح 2:\s*([^\n]+)/i,
+        probability: /الاحتمالية:\s*([^\n]+)/i
+      },
+      fr: {
+        pair: /(?:Paire|Symbole):\s*([^\n]+)/i,
+        type: /Type:\s*([^\n]+)/i,
+        entry: /Entrée:\s*([^\n]+)/i,
+        stopLoss: /Stop Loss:\s*([^\n]+)/i,
+        takeProfit1: /Take Profit 1:\s*([^\n]+)/i,
+        takeProfit2: /Take Profit 2:\s*([^\n]+)/i,
+        probability: /Probabilité:\s*([^\n]+)/i
+      },
+      es: {
+        pair: /(?:Par|Símbolo):\s*([^\n]+)/i,
+        type: /Tipo:\s*([^\n]+)/i,
+        entry: /Entrada:\s*([^\n]+)/i,
+        stopLoss: /Stop Loss:\s*([^\n]+)/i,
+        takeProfit1: /Take Profit 1:\s*([^\n]+)/i,
+        takeProfit2: /Take Profit 2:\s*([^\n]+)/i,
+        probability: /Probabilidad:\s*([^\n]+)/i
+      },
+      de: {
+        pair: /(?:Paar|Symbol):\s*([^\n]+)/i,
+        type: /Typ:\s*([^\n]+)/i,
+        entry: /Einstieg:\s*([^\n]+)/i,
+        stopLoss: /Stop Loss:\s*([^\n]+)/i,
+        takeProfit1: /Take Profit 1:\s*([^\n]+)/i,
+        takeProfit2: /Take Profit 2:\s*([^\n]+)/i,
+        probability: /Wahrscheinlichkeit:\s*([^\n]+)/i
+      },
+      it: {
+        pair: /(?:Coppia|Simbolo):\s*([^\n]+)/i,
+        type: /Tipo:\s*([^\n]+)/i,
+        entry: /Entrata:\s*([^\n]+)/i,
+        stopLoss: /Stop Loss:\s*([^\n]+)/i,
+        takeProfit1: /Take Profit 1:\s*([^\n]+)/i,
+        takeProfit2: /Take Profit 2:\s*([^\n]+)/i,
+        probability: /Probabilità:\s*([^\n]+)/i
+      },
+      hi: {
+        pair: /(?:जोड़ी|प्रतीक):\s*([^\n]+)/i,
+        type: /प्रकार:\s*([^\n]+)/i,
+        entry: /प्रवेश:\s*([^\n]+)/i,
+        stopLoss: /स्टॉप लॉस:\s*([^\n]+)/i,
+        takeProfit1: /टेक प्रॉफिट 1:\s*([^\n]+)/i,
+        takeProfit2: /टेक प्रॉफिट 2:\s*([^\n]+)/i,
+        probability: /संभावना:\s*([^\n]+)/i
+      }
+    };
+
+    // Get patterns for current language, fallback to English
+    const summaryPattern = summaryPatterns[language as keyof typeof summaryPatterns] || summaryPatterns.en;
+    const fields = fieldPatterns[language as keyof typeof fieldPatterns] || fieldPatterns.en;
+
+    // Look for the signal summary section
+    const summaryMatch = response.match(summaryPattern);
     if (!summaryMatch) {
-      // Fallback: try to extract basic signal type
+      // Fallback: try to extract basic signal type from any language
       const lowerResponse = response.toLowerCase();
       let type: 'buy' | 'sell' | 'hold' = 'hold';
       
-      if (lowerResponse.includes('buy') || lowerResponse.includes('long')) {
+      // Multi-language signal type detection
+      if (lowerResponse.includes('buy') || lowerResponse.includes('long') || 
+          lowerResponse.includes('شراء') || lowerResponse.includes('achat') || 
+          lowerResponse.includes('compra') || lowerResponse.includes('kauf') || 
+          lowerResponse.includes('acquisto') || lowerResponse.includes('खरीदना')) {
         type = 'buy';
-      } else if (lowerResponse.includes('sell') || lowerResponse.includes('short')) {
+      } else if (lowerResponse.includes('sell') || lowerResponse.includes('short') || 
+                 lowerResponse.includes('بيع') || lowerResponse.includes('vente') || 
+                 lowerResponse.includes('venta') || lowerResponse.includes('verkauf') || 
+                 lowerResponse.includes('vendita') || lowerResponse.includes('बेचना')) {
         type = 'sell';
       }
       
@@ -145,10 +317,9 @@ export const extractSignalData = (response: string, symbol: string): any => {
     
     const summaryText = summaryMatch[1];
     
-    // Extract each field
-    const extractField = (fieldName: string): string | null => {
-      const regex = new RegExp(`${fieldName}:\\s*([^\\n]+)`, 'i');
-      const match = summaryText.match(regex);
+    // Extract each field using language-specific patterns
+    const extractField = (pattern: RegExp): string | null => {
+      const match = summaryText.match(pattern);
       return match ? match[1].trim() : null;
     };
     
@@ -164,17 +335,30 @@ export const extractSignalData = (response: string, symbol: string): any => {
       return numMatch ? parseFloat(numMatch[1]) : null;
     };
     
-    const pair = extractField('Pair') || symbol;
-    const typeStr = extractField('Type')?.toUpperCase();
-    const type: 'buy' | 'sell' | 'hold' = 
-      typeStr === 'BUY' ? 'buy' : 
-      typeStr === 'SELL' ? 'sell' : 'hold';
+    // Normalize signal type across languages
+    const normalizeSignalType = (typeStr: string | null): 'buy' | 'sell' | 'hold' => {
+      if (!typeStr) return 'hold';
+      const lower = typeStr.toLowerCase();
+      
+      if (lower.includes('buy') || lower.includes('long') || lower.includes('شراء') || 
+          lower.includes('achat') || lower.includes('compra') || lower.includes('kauf') || 
+          lower.includes('acquisto') || lower.includes('खरीदना')) {
+        return 'buy';
+      } else if (lower.includes('sell') || lower.includes('short') || lower.includes('بيع') || 
+                 lower.includes('vente') || lower.includes('venta') || lower.includes('verkauf') || 
+                 lower.includes('vendita') || lower.includes('बेचना')) {
+        return 'sell';
+      }
+      return 'hold';
+    };
     
-    const entry = extractPrice(extractField('Entry'));
-    const stopLoss = extractPrice(extractField('Stop Loss'));
-    const takeProfit1 = extractPrice(extractField('Take Profit 1'));
-    const takeProfit2 = extractPrice(extractField('Take Profit 2'));
-    const probability = extractPercentage(extractField('Probability'));
+    const pair = extractField(fields.pair) || symbol;
+    const type = normalizeSignalType(extractField(fields.type));
+    const entry = extractPrice(extractField(fields.entry));
+    const stopLoss = extractPrice(extractField(fields.stopLoss));
+    const takeProfit1 = extractPrice(extractField(fields.takeProfit1));
+    const takeProfit2 = extractPrice(extractField(fields.takeProfit2));
+    const probability = extractPercentage(extractField(fields.probability));
     
     return {
       pair,
@@ -203,10 +387,11 @@ export const generateTradingSignalWithRealData = async ({
   symbol,
   marketData,
   schoolPrompt,
-  provider = 'openrouter'
+  provider = 'openrouter',
+  language = 'en'
 }: TradingAnalysisRequest): Promise<{ analysis: string; signal: any }> => {
   try {
-    const prompt = createTradingPrompt(schoolPrompt, symbol, marketData);
+    const prompt = createTradingPrompt(schoolPrompt, symbol, marketData, language);
     
     let analysis: string;
     if (provider === 'gemini') {
@@ -215,8 +400,8 @@ export const generateTradingSignalWithRealData = async ({
       analysis = await callOpenRouterAPI(prompt);
     }
     
-    // Extract structured signal data
-    const signal = extractSignalData(analysis, symbol);
+    // Extract structured signal data with language support
+    const signal = extractSignalData(analysis, symbol, language);
     
     return { analysis, signal };
   } catch (error) {
@@ -243,7 +428,7 @@ const callOpenRouterAPI = async (prompt: string): Promise<string> => {
       messages: [
         {
           role: 'system',
-          content: 'You are an expert trading analyst. Provide clear, actionable trading recommendations based on the candlestick data provided. Include confidence level, signal type (buy/sell/hold), and reasoning.'
+          content: 'You are an expert trading analyst. Provide clear, actionable trading recommendations based on the candlestick data provided. Include confidence level, signal type (buy/sell/hold), and reasoning. Always respond in the language requested by the user.'
         },
         {
           role: 'user',
