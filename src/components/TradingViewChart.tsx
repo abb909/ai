@@ -26,6 +26,45 @@ const TRADINGVIEW_SYMBOL_MAPPING: { [key: string]: string } = {
   'ETHUSD': 'COINBASE:ETHUSD'
 };
 
+// TradingView supported locales mapping
+const TRADINGVIEW_LOCALE_MAPPING: { [key: string]: string } = {
+  'en': 'en',
+  'ar': 'ar',
+  'es': 'es',
+  'fr': 'fr',
+  'de': 'de',
+  'it': 'it',
+  'ja': 'ja',
+  'ko': 'ko',
+  'pt': 'pt',
+  'ru': 'ru',
+  'zh': 'zh',
+  'hi': 'en', // Hindi not supported, fallback to English
+  'tr': 'tr',
+  'nl': 'nl',
+  'sv': 'sv',
+  'pl': 'pl',
+  'th': 'th',
+  'vi': 'vi',
+  'id': 'id',
+  'ms': 'ms',
+  'he': 'he',
+  'cs': 'cs',
+  'da': 'da',
+  'fi': 'fi',
+  'no': 'no',
+  'hu': 'hu',
+  'ro': 'ro',
+  'sk': 'sk',
+  'sl': 'sl',
+  'bg': 'bg',
+  'hr': 'hr',
+  'et': 'et',
+  'lv': 'lv',
+  'lt': 'lt',
+  'uk': 'uk'
+};
+
 const TradingViewChart: React.FC<TradingViewChartProps> = ({ 
   symbol, 
   height = 600, 
@@ -38,6 +77,11 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
   // Get the correct TradingView symbol
   const getTradingViewSymbol = (symbol: string): string => {
     return TRADINGVIEW_SYMBOL_MAPPING[symbol.toUpperCase()] || `OANDA:${symbol.toUpperCase()}`;
+  };
+
+  // Get supported TradingView locale
+  const getTradingViewLocale = (language: string): string => {
+    return TRADINGVIEW_LOCALE_MAPPING[language] || 'en';
   };
 
   useEffect(() => {
@@ -57,6 +101,7 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
     containerRef.current.innerHTML = '';
 
     const tradingViewSymbol = getTradingViewSymbol(symbol);
+    const tradingViewLocale = getTradingViewLocale(language);
     
     // Create unique container ID
     const containerId = `tradingview_${Date.now()}`;
@@ -108,7 +153,7 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
           timezone: "Etc/UTC",
           theme: theme === 'dark' ? 'dark' : 'light',
           style: "1", // Candlestick
-          locale: language === 'ar' ? 'ar' : language,
+          locale: tradingViewLocale,
           toolbar_bg: theme === 'dark' ? "#1a1a1a" : "#f1f3f6",
           enable_publishing: false,
           allow_symbol_change: false,
@@ -129,10 +174,14 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
         // Create the widget
         widgetRef.current = new TradingView.widget(config);
         
-        // Handle widget ready event
-        widgetRef.current.onChartReady(() => {
-          console.log('TradingView chart loaded successfully for', tradingViewSymbol);
-        });
+        // Handle widget ready event - check if onChartReady exists
+        if (widgetRef.current && typeof widgetRef.current.onChartReady === 'function') {
+          widgetRef.current.onChartReady(() => {
+            console.log('TradingView chart loaded successfully for', tradingViewSymbol);
+          });
+        } else {
+          console.warn('TradingView widget onChartReady method not available');
+        }
 
       } catch (error) {
         console.error('Error creating TradingView widget:', error);
