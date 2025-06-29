@@ -32,7 +32,7 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
   theme = 'dark' 
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const scriptRef = useRef<HTMLScriptElement | null>(null);
+  const widgetRef = useRef<any>(null);
   const { language } = useLanguage();
   
   // Get the correct TradingView symbol
@@ -43,75 +43,130 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Clear previous widget and script
-    containerRef.current.innerHTML = '';
-    if (scriptRef.current && scriptRef.current.parentNode) {
-      scriptRef.current.parentNode.removeChild(scriptRef.current);
-      scriptRef.current = null;
+    // Clear previous widget
+    if (widgetRef.current) {
+      try {
+        widgetRef.current.remove();
+      } catch (e) {
+        console.warn('Error removing previous widget:', e);
+      }
+      widgetRef.current = null;
     }
+
+    // Clear container
+    containerRef.current.innerHTML = '';
 
     const tradingViewSymbol = getTradingViewSymbol(symbol);
     
-    // Create container div for the widget first
-    const widgetContainer = document.createElement('div');
-    widgetContainer.className = 'tradingview-widget-container';
-    widgetContainer.style.height = '100%';
-    widgetContainer.style.width = '100%';
-
-    const chartContainer = document.createElement('div');
-    chartContainer.id = 'tradingview_chart';
-    chartContainer.style.height = '100%';
-    chartContainer.style.width = '100%';
-
-    widgetContainer.appendChild(chartContainer);
+    // Create unique container ID
+    const containerId = `tradingview_${Date.now()}`;
     
-    // Append the widget container to DOM first
-    containerRef.current.appendChild(widgetContainer);
+    // Create the widget container
+    const widgetDiv = document.createElement('div');
+    widgetDiv.id = containerId;
+    widgetDiv.style.height = '100%';
+    widgetDiv.style.width = '100%';
+    
+    containerRef.current.appendChild(widgetDiv);
 
-    // Use setTimeout to ensure DOM is fully updated before creating script
-    const timeoutId = setTimeout(() => {
-      // Create TradingView widget script
-      const script = document.createElement('script');
-      script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-      script.type = 'text/javascript';
-      script.async = true;
-      
-      // Widget configuration
-      const config = {
-        autosize: true,
-        symbol: tradingViewSymbol,
-        interval: "5",
-        timezone: "Etc/UTC",
-        theme: theme,
-        style: "1",
-        locale: language === 'ar' ? 'ar' : language,
-        toolbar_bg: "#f1f3f6",
-        enable_publishing: false,
-        allow_symbol_change: false,
-        container_id: "tradingview_chart",
-        hide_top_toolbar: false,
-        hide_legend: false,
-        save_image: false,
-        hide_volume: false,
-        support_host: "https://www.tradingview.com"
-      };
+    // Load TradingView widget
+    const loadWidget = () => {
+      // Check if TradingView is available
+      if (typeof (window as any).TradingView === 'undefined') {
+        // Load TradingView library first
+        const script = document.createElement('script');
+        script.src = 'https://s3.tradingview.com/tv.js';
+        script.async = true;
+        script.onload = () => {
+          createWidget();
+        };
+        script.onerror = () => {
+          console.error('Failed to load TradingView library');
+          showError('Failed to load TradingView library');
+        };
+        document.head.appendChild(script);
+      } else {
+        createWidget();
+      }
+    };
 
-      script.innerHTML = JSON.stringify(config);
-      scriptRef.current = script;
+    const createWidget = () => {
+      try {
+        const TradingView = (window as any).TradingView;
+        
+        if (!TradingView || !TradingView.widget) {
+          console.error('TradingView widget not available');
+          showError('TradingView widget not available');
+          return;
+        }
 
-      // Append script to document head instead of the widget container
-      document.head.appendChild(script);
-    }, 100);
+        // Widget configuration
+        const config = {
+          autosize: true,
+          symbol: tradingViewSymbol,
+          interval: "5",
+          timezone: "Etc/UTC",
+          theme: theme === 'dark' ? 'dark' : 'light',
+          style: "1", // Candlestick
+          locale: language === 'ar' ? 'ar' : language,
+          toolbar_bg: theme === 'dark' ? "#1a1a1a" : "#f1f3f6",
+          enable_publishing: false,
+          allow_symbol_change: false,
+          container_id: containerId,
+          hide_top_toolbar: false,
+          hide_legend: false,
+          save_image: false,
+          hide_volume: false,
+          studies: [
+            "Volume@tv-basicstudies"
+          ],
+          show_popup_button: false,
+          popup_width: "1000",
+          popup_height: "650",
+          support_host: "https://www.tradingview.com"
+        };
+
+        // Create the widget
+        widgetRef.current = new TradingView.widget(config);
+        
+        // Handle widget ready event
+        widgetRef.current.onChartReady(() => {
+          console.log('TradingView chart loaded successfully for', tradingViewSymbol);
+        });
+
+      } catch (error) {
+        console.error('Error creating TradingView widget:', error);
+        showError('Error creating TradingView widget');
+      }
+    };
+
+    const showError = (message: string) => {
+      if (containerRef.current) {
+        containerRef.current.innerHTML = `
+          <div class="flex items-center justify-center h-full">
+            <div class="text-center">
+              <div class="text-red-400 mb-2">⚠️</div>
+              <p class="text-gray-400">${message}</p>
+              <p class="text-gray-500 text-sm mt-2">${tradingViewSymbol}</p>
+            </div>
+          </div>
+        `;
+      }
+    };
+
+    // Start loading with a small delay to ensure DOM is ready
+    const timeoutId = setTimeout(loadWidget, 100);
 
     // Cleanup function
     return () => {
       clearTimeout(timeoutId);
-      if (containerRef.current) {
-        containerRef.current.innerHTML = '';
-      }
-      if (scriptRef.current && scriptRef.current.parentNode) {
-        scriptRef.current.parentNode.removeChild(scriptRef.current);
-        scriptRef.current = null;
+      if (widgetRef.current) {
+        try {
+          widgetRef.current.remove();
+        } catch (e) {
+          console.warn('Error during cleanup:', e);
+        }
+        widgetRef.current = null;
       }
     };
   }, [symbol, theme, language]);
