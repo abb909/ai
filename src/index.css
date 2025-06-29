@@ -32,6 +32,186 @@
   margin-right: 1rem;
 }
 
+[dir="rtl"] .space-x-6 > * + * {
+  margin-left: 0;
+  margin-right: 1.5rem;
+}
+
+[dir="rtl"] .space-x-8 > * + * {
+  margin-left: 0;
+  margin-right: 2rem;
+}
+
+/* RTL Text alignment */
+[dir="rtl"] .text-left {
+  text-align: right;
+}
+
+[dir="rtl"] .text-right {
+  text-align: left;
+}
+
+/* RTL Flex layouts */
+[dir="rtl"] .flex-row {
+  flex-direction: row-reverse;
+}
+
+[dir="rtl"] .justify-start {
+  justify-content: flex-end;
+}
+
+[dir="rtl"] .justify-end {
+  justify-content: flex-start;
+}
+
+/* RTL Positioning */
+[dir="rtl"] .left-0 {
+  left: auto;
+  right: 0;
+}
+
+[dir="rtl"] .right-0 {
+  right: auto;
+  left: 0;
+}
+
+[dir="rtl"] .left-3 {
+  left: auto;
+  right: 0.75rem;
+}
+
+[dir="rtl"] .right-3 {
+  right: auto;
+  left: 0.75rem;
+}
+
+[dir="rtl"] .left-4 {
+  left: auto;
+  right: 1rem;
+}
+
+[dir="rtl"] .right-4 {
+  right: auto;
+  left: 1rem;
+}
+
+[dir="rtl"] .left-1\/2 {
+  left: auto;
+  right: 50%;
+  transform: translateX(50%);
+}
+
+[dir="rtl"] .right-1\/2 {
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* RTL Margins and Padding */
+[dir="rtl"] .ml-2 {
+  margin-left: 0;
+  margin-right: 0.5rem;
+}
+
+[dir="rtl"] .mr-2 {
+  margin-right: 0;
+  margin-left: 0.5rem;
+}
+
+[dir="rtl"] .ml-3 {
+  margin-left: 0;
+  margin-right: 0.75rem;
+}
+
+[dir="rtl"] .mr-3 {
+  margin-right: 0;
+  margin-left: 0.75rem;
+}
+
+[dir="rtl"] .ml-4 {
+  margin-left: 0;
+  margin-right: 1rem;
+}
+
+[dir="rtl"] .mr-4 {
+  margin-right: 0;
+  margin-left: 1rem;
+}
+
+[dir="rtl"] .ml-auto {
+  margin-left: 0;
+  margin-right: auto;
+}
+
+[dir="rtl"] .mr-auto {
+  margin-right: 0;
+  margin-left: auto;
+}
+
+[dir="rtl"] .pl-3 {
+  padding-left: 0;
+  padding-right: 0.75rem;
+}
+
+[dir="rtl"] .pr-3 {
+  padding-right: 0;
+  padding-left: 0.75rem;
+}
+
+[dir="rtl"] .pl-4 {
+  padding-left: 0;
+  padding-right: 1rem;
+}
+
+[dir="rtl"] .pr-4 {
+  padding-right: 0;
+  padding-left: 1rem;
+}
+
+[dir="rtl"] .pl-10 {
+  padding-left: 0;
+  padding-right: 2.5rem;
+}
+
+[dir="rtl"] .pr-10 {
+  padding-right: 0;
+  padding-left: 2.5rem;
+}
+
+/* RTL Border radius */
+[dir="rtl"] .rounded-l-lg {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-top-right-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+}
+
+[dir="rtl"] .rounded-r-lg {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-top-left-radius: 0.5rem;
+  border-bottom-left-radius: 0.5rem;
+}
+
+/* RTL Transform */
+[dir="rtl"] .rotate-180 {
+  transform: rotate(180deg) scaleX(-1);
+}
+
+/* Arabic font improvements */
+[dir="rtl"] {
+  font-family: 'Segoe UI', 'Tahoma', 'Arial', 'Helvetica Neue', sans-serif;
+}
+
+[dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3, [dir="rtl"] h4, [dir="rtl"] h5, [dir="rtl"] h6 {
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+[dir="rtl"] p, [dir="rtl"] span, [dir="rtl"] div {
+  line-height: 1.6;
+}
+
 /* Mobile-first responsive design improvements */
 @media (max-width: 640px) {
   .container {
@@ -60,11 +240,22 @@
   input, select, textarea {
     font-size: 16px; /* Prevents zoom on iOS */
   }
+  
+  /* RTL mobile adjustments */
+  [dir="rtl"] .space-x-2 > * + * {
+    margin-left: 0;
+    margin-right: 0.5rem;
+  }
+  
+  [dir="rtl"] .space-x-4 > * + * {
+    margin-left: 0;
+    margin-right: 1rem;
+  }
 }
 
 /* Smooth transitions for language switching */
 * {
-  transition: margin 0.2s ease, padding 0.2s ease;
+  transition: margin 0.2s ease, padding 0.2s ease, transform 0.2s ease;
 }
 
 /* Better focus states for accessibility */
@@ -125,24 +316,42 @@ a:focus {
   line-height: 1.6;
 }
 
-/* Ensure proper text alignment in RTL */
-[dir="rtl"] .text-left {
-  text-align: right;
+/* Language-specific font optimizations */
+[lang="ar"] {
+  font-family: 'Segoe UI', 'Tahoma', 'Arial Unicode MS', sans-serif;
 }
 
-[dir="rtl"] .text-right {
-  text-align: left;
+[lang="hi"] {
+  font-family: 'Segoe UI', 'Noto Sans Devanagari', 'Arial Unicode MS', sans-serif;
 }
 
-/* Fix for RTL flex layouts */
-[dir="rtl"] .flex-row {
-  flex-direction: row-reverse;
+[lang="fr"], [lang="es"], [lang="de"], [lang="it"] {
+  font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
 }
 
-[dir="rtl"] .justify-start {
-  justify-content: flex-end;
+/* Ensure proper icon alignment in RTL */
+[dir="rtl"] .flex.items-center svg {
+  margin-left: 0.5rem;
+  margin-right: 0;
 }
 
-[dir="rtl"] .justify-end {
-  justify-content: flex-start;
+[dir="rtl"] .flex.items-center svg:first-child {
+  margin-left: 0;
+  margin-right: 0.5rem;
+}
+
+/* RTL-specific animations */
+[dir="rtl"] .group-hover\:translate-x-1:hover {
+  transform: translateX(-0.25rem);
+}
+
+[dir="rtl"] .hover\:translate-x-1:hover {
+  transform: translateX(-0.25rem);
+}
+
+/* Better number formatting for RTL */
+[dir="rtl"] .tabular-nums {
+  font-variant-numeric: tabular-nums;
+  direction: ltr;
+  display: inline-block;
 }
