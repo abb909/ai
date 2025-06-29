@@ -930,23 +930,68 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     document.body.classList.add(isRTL ? 'rtl' : 'ltr');
   }, [language, isRTL]);
 
+  // Enhanced translation function with better error handling
   const t = (key: string): string => {
-    const keys = key.split('.');
-    let value: any = translations[language];
-    
-    for (const k of keys) {
-      value = value?.[k];
-    }
-    
-    // Fallback to English if translation not found
-    if (value === undefined) {
-      value = translations.en;
-      for (const k of keys) {
-        value = value?.[k];
+    try {
+      // Get current language translations
+      const currentTranslations = translations[language];
+      if (!currentTranslations) {
+        console.warn(`No translations found for language: ${language}`);
+        return key;
       }
+
+      // Direct key lookup first (for simple keys)
+      if (currentTranslations[key]) {
+        return currentTranslations[key];
+      }
+
+      // Nested key lookup (for dot notation keys like 'nav.dashboard')
+      const keys = key.split('.');
+      let value: any = currentTranslations;
+      
+      for (const k of keys) {
+        if (value && typeof value === 'object' && k in value) {
+          value = value[k];
+        } else {
+          value = undefined;
+          break;
+        }
+      }
+      
+      // If found, return the value
+      if (typeof value === 'string') {
+        return value;
+      }
+      
+      // Fallback to English if translation not found
+      const englishTranslations = translations.en;
+      if (englishTranslations[key]) {
+        return englishTranslations[key];
+      }
+
+      // Nested fallback to English
+      let englishValue: any = englishTranslations;
+      for (const k of keys) {
+        if (englishValue && typeof englishValue === 'object' && k in englishValue) {
+          englishValue = englishValue[k];
+        } else {
+          englishValue = undefined;
+          break;
+        }
+      }
+      
+      if (typeof englishValue === 'string') {
+        return englishValue;
+      }
+      
+      // If all else fails, return the key itself
+      console.warn(`Translation not found for key: ${key} in language: ${language}`);
+      return key;
+      
+    } catch (error) {
+      console.error(`Error in translation function for key: ${key}`, error);
+      return key;
     }
-    
-    return value || key;
   };
 
   return (
