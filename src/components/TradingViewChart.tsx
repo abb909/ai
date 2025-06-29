@@ -32,6 +32,7 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
   theme = 'dark' 
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const scriptRef = useRef<HTMLScriptElement | null>(null);
   const { language } = useLanguage();
   
   // Get the correct TradingView symbol
@@ -42,40 +43,16 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Clear previous widget
+    // Clear previous widget and script
     containerRef.current.innerHTML = '';
-
-    // Create TradingView widget script
-    const script = document.createElement('script');
-    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
-    script.type = 'text/javascript';
-    script.async = true;
+    if (scriptRef.current && scriptRef.current.parentNode) {
+      scriptRef.current.parentNode.removeChild(scriptRef.current);
+      scriptRef.current = null;
+    }
 
     const tradingViewSymbol = getTradingViewSymbol(symbol);
     
-    // Widget configuration
-    const config = {
-      autosize: true,
-      symbol: tradingViewSymbol,
-      interval: "5",
-      timezone: "Etc/UTC",
-      theme: theme,
-      style: "1",
-      locale: language === 'ar' ? 'ar' : language,
-      toolbar_bg: "#f1f3f6",
-      enable_publishing: false,
-      allow_symbol_change: false,
-      container_id: "tradingview_chart",
-      hide_top_toolbar: false,
-      hide_legend: false,
-      save_image: false,
-      hide_volume: false,
-      support_host: "https://www.tradingview.com"
-    };
-
-    script.innerHTML = JSON.stringify(config);
-
-    // Create container div for the widget
+    // Create container div for the widget first
     const widgetContainer = document.createElement('div');
     widgetContainer.className = 'tradingview-widget-container';
     widgetContainer.style.height = '100%';
@@ -87,14 +64,54 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
     chartContainer.style.width = '100%';
 
     widgetContainer.appendChild(chartContainer);
-    widgetContainer.appendChild(script);
-
+    
+    // Append the widget container to DOM first
     containerRef.current.appendChild(widgetContainer);
+
+    // Use setTimeout to ensure DOM is fully updated before creating script
+    const timeoutId = setTimeout(() => {
+      // Create TradingView widget script
+      const script = document.createElement('script');
+      script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+      script.type = 'text/javascript';
+      script.async = true;
+      
+      // Widget configuration
+      const config = {
+        autosize: true,
+        symbol: tradingViewSymbol,
+        interval: "5",
+        timezone: "Etc/UTC",
+        theme: theme,
+        style: "1",
+        locale: language === 'ar' ? 'ar' : language,
+        toolbar_bg: "#f1f3f6",
+        enable_publishing: false,
+        allow_symbol_change: false,
+        container_id: "tradingview_chart",
+        hide_top_toolbar: false,
+        hide_legend: false,
+        save_image: false,
+        hide_volume: false,
+        support_host: "https://www.tradingview.com"
+      };
+
+      script.innerHTML = JSON.stringify(config);
+      scriptRef.current = script;
+
+      // Append script to document head instead of the widget container
+      document.head.appendChild(script);
+    }, 100);
 
     // Cleanup function
     return () => {
+      clearTimeout(timeoutId);
       if (containerRef.current) {
         containerRef.current.innerHTML = '';
+      }
+      if (scriptRef.current && scriptRef.current.parentNode) {
+        scriptRef.current.parentNode.removeChild(scriptRef.current);
+        scriptRef.current = null;
       }
     };
   }, [symbol, theme, language]);
