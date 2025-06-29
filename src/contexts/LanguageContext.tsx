@@ -24,7 +24,7 @@ const translations = {
     'nav.logout': 'Logout',
     'nav.getStarted': 'Get Started',
     
-    // Language names
+    // Language names - Display in their native script
     'language.english': 'English',
     'language.arabic': 'العربية',
     'language.french': 'Français',
@@ -152,7 +152,7 @@ const translations = {
     'nav.logout': 'تسجيل الخروج',
     'nav.getStarted': 'ابدأ الآن',
     
-    // Language names
+    // Language names - Keep native scripts for all languages
     'language.english': 'English',
     'language.arabic': 'العربية',
     'language.french': 'Français',
@@ -280,7 +280,7 @@ const translations = {
     'nav.logout': 'Déconnexion',
     'nav.getStarted': 'Commencer',
     
-    // Language names
+    // Language names - Keep native scripts
     'language.english': 'English',
     'language.arabic': 'العربية',
     'language.french': 'Français',
@@ -408,7 +408,7 @@ const translations = {
     'nav.logout': 'Cerrar Sesión',
     'nav.getStarted': 'Comenzar',
     
-    // Language names
+    // Language names - Keep native scripts
     'language.english': 'English',
     'language.arabic': 'العربية',
     'language.french': 'Français',
@@ -536,7 +536,7 @@ const translations = {
     'nav.logout': 'Abmelden',
     'nav.getStarted': 'Loslegen',
     
-    // Language names
+    // Language names - Keep native scripts
     'language.english': 'English',
     'language.arabic': 'العربية',
     'language.french': 'Français',
@@ -664,7 +664,7 @@ const translations = {
     'nav.logout': 'Esci',
     'nav.getStarted': 'Inizia',
     
-    // Language names
+    // Language names - Keep native scripts
     'language.english': 'English',
     'language.arabic': 'العربية',
     'language.french': 'Français',
@@ -792,7 +792,7 @@ const translations = {
     'nav.logout': 'लॉगआउट',
     'nav.getStarted': 'शुरू करें',
     
-    // Language names
+    // Language names - Keep native scripts
     'language.english': 'English',
     'language.arabic': 'العربية',
     'language.french': 'Français',
