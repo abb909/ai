@@ -4,7 +4,16 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { getSchools, saveRecommendation, incrementUserUsage } from '../services/firestore';
 import { doc, getDoc } from 'firebase/firestore';
 import { generateTradingSignalWithRealData } from '../services/gpt';
-import { fetchMultiTimeframeData, generateMockMultiTimeframeData, TRADING_PAIRS, testApiConnection } from '../services/marketData';
+import { 
+  fetchMultiTimeframeData, 
+  generateMockMultiTimeframeData, 
+  TRADING_PAIRS, 
+  testApiConnection 
+} from '../services/marketData';
+import { 
+  convertToMultiTimeframeData, 
+  isTradingViewDataAvailable 
+} from '../services/tradingViewData';
 import { sendTelegramMessage, formatSignalForTelegram } from '../services/telegram';
 import { db } from '../config/firebase';
 import { School } from '../types';
@@ -35,7 +44,7 @@ import {
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
-  const { t, isRTL, language } = useLanguage(); // Add language from context
+  const { t, isRTL, language } = useLanguage();
   const [schools, setSchools] = useState<School[]>([]);
   const [selectedSchool, setSelectedSchool] = useState('');
   const [selectedPair, setSelectedPair] = useState('XAUUSD');
@@ -48,12 +57,12 @@ const Dashboard: React.FC = () => {
   const [error, setError] = useState('');
   const [marketData, setMarketData] = useState<any>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [apiStatus, setApiStatus] = useState<'unknown' | 'connected' | 'error'>('unknown');
+  const [dataSource, setDataSource] = useState<'tradingview' | 'api' | 'demo'>('demo');
+  const [chartDataReady, setChartDataReady] = useState(false);
   const [telegramConfig, setTelegramConfig] = useState<any>(null);
 
   useEffect(() => {
     loadSchools();
-    checkApiConnection();
     if (user?.plan === 'elite') {
       loadTelegramConfig();
     }
@@ -90,12 +99,10 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const checkApiConnection = async () => {
-    try {
-      const isConnected = await testApiConnection();
-      setApiStatus(isConnected ? 'connected' : 'error');
-    } catch (error) {
-      setApiStatus('error');
+  const handleChartDataReady = (hasData: boolean) => {
+    setChartDataReady(hasData);
+    if (hasData) {
+      setDataSource('tradingview');
     }
   };
 
@@ -104,32 +111,45 @@ const Dashboard: React.FC = () => {
     setError('');
     
     try {
-      console.log(`Fetching market data for ${selectedPair}...`);
-      const data = await fetchMultiTimeframeData(selectedPair, candleCount);
-      setMarketData(data);
-      setError('');
-      setApiStatus('connected');
-    } catch (error: any) {
-      console.error('Error fetching market data:', error);
-      setApiStatus('error');
+      console.log(`🔄 Fetching market data for ${selectedPair}...`);
       
-      // Provide more specific error messages
-      let errorMessage = error.message;
-      if (errorMessage.includes('API key')) {
-        errorMessage = t('error.apiNotConfigured');
-      } else if (errorMessage.includes('rate limit')) {
-        errorMessage = t('error.rateLimitReached');
-      } else if (errorMessage.includes('symbol')) {
-        errorMessage = t('error.symbolNotFound');
-      } else {
-        errorMessage = t('error.marketDataUnavailable');
+      // Try TradingView data extraction first
+      if (isTradingViewDataAvailable()) {
+        console.log('📊 Extracting data from TradingView chart...');
+        const data = await convertToMultiTimeframeData(selectedPair, candleCount);
+        setMarketData(data);
+        setDataSource('tradingview');
+        setError('');
+        console.log('✅ Successfully extracted data from TradingView chart');
+        return;
       }
       
-      // Fallback to mock data
-      console.log('Falling back to demo data...');
+      // Fallback to external API
+      console.log('📡 TradingView data not available, trying external API...');
+      try {
+        const data = await fetchMultiTimeframeData(selectedPair, candleCount);
+        setMarketData(data);
+        setDataSource('api');
+        setError('');
+        console.log('✅ Successfully fetched data from external API');
+      } catch (apiError: any) {
+        console.warn('⚠️ External API failed, using demo data:', apiError.message);
+        
+        // Final fallback to demo data
+        const mockData = generateMockMultiTimeframeData(selectedPair);
+        setMarketData(mockData);
+        setDataSource('demo');
+        setError('Using demo data - chart data extraction and external API unavailable');
+      }
+      
+    } catch (error: any) {
+      console.error('❌ Error fetching market data:', error);
+      
+      // Final fallback to demo data
       const mockData = generateMockMultiTimeframeData(selectedPair);
       setMarketData(mockData);
-      setError(errorMessage);
+      setDataSource('demo');
+      setError('Using demo data - all data sources failed');
     } finally {
       setDataLoading(false);
     }
@@ -156,15 +176,14 @@ const Dashboard: React.FC = () => {
       const school = schools.find(s => s.id === selectedSchool);
       if (!school) throw new Error('Selected school not found');
 
-      console.log(`Generating signal in ${language} language...`);
+      console.log(`🤖 Generating signal in ${language} language using ${dataSource} data...`);
       
-      // Pass the current language to the AI service
       const result = await generateTradingSignalWithRealData({
         symbol: selectedPair,
         marketData,
         schoolPrompt: school.prompt,
         provider: aiProvider,
-        language: language // Pass user's selected language
+        language: language
       });
 
       // Save recommendation with structured signal data
@@ -219,25 +238,29 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const getApiStatusIcon = () => {
-    switch (apiStatus) {
-      case 'connected':
-        return <Wifi className="h-4 w-4 text-green-400" />;
-      case 'error':
-        return <WifiOff className="h-4 w-4 text-red-400" />;
+  const getDataSourceIcon = () => {
+    switch (dataSource) {
+      case 'tradingview':
+        return <CheckCircle className="h-4 w-4 text-green-400" />;
+      case 'api':
+        return <Wifi className="h-4 w-4 text-blue-400" />;
+      case 'demo':
+        return <XCircle className="h-4 w-4 text-yellow-400" />;
       default:
         return <Loader className="h-4 w-4 text-gray-400 animate-spin" />;
     }
   };
 
-  const getApiStatusText = () => {
-    switch (apiStatus) {
-      case 'connected':
-        return t('api.connected');
-      case 'error':
-        return t('api.disconnected');
+  const getDataSourceText = () => {
+    switch (dataSource) {
+      case 'tradingview':
+        return 'TradingView Chart Data';
+      case 'api':
+        return 'External API Data';
+      case 'demo':
+        return 'Demo Data';
       default:
-        return t('api.checking');
+        return 'Loading...';
     }
   };
 
@@ -273,26 +296,20 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* API Status Banner */}
+        {/* Data Source Status */}
         <div className="mb-4 sm:mb-6">
           <div className={`flex items-center space-x-2 px-4 py-2 rounded-lg border text-sm ${
-            apiStatus === 'connected' 
+            dataSource === 'tradingview' 
               ? 'bg-green-500/10 border-green-500/20 text-green-400'
-              : apiStatus === 'error'
-              ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
-              : 'bg-gray-500/10 border-gray-500/20 text-gray-400'
+              : dataSource === 'api'
+              ? 'bg-blue-500/10 border-blue-500/20 text-blue-400'
+              : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'
           }`}>
-            {getApiStatusIcon()}
-            <span className="font-medium">{getApiStatusText()}</span>
-            {apiStatus === 'error' && (
-              <span className="text-xs">• {t('api.demoDataUsed')}</span>
+            {getDataSourceIcon()}
+            <span className="font-medium">{getDataSourceText()}</span>
+            {dataSource === 'demo' && (
+              <span className="text-xs">• Chart data will be used when available</span>
             )}
-            <button
-              onClick={checkApiConnection}
-              className="ml-auto text-xs hover:underline"
-            >
-              {t('api.retry')}
-            </button>
           </div>
         </div>
 
@@ -444,9 +461,7 @@ const Dashboard: React.FC = () => {
                       <div className="flex items-center space-x-2">
                         <CheckCircle className="h-4 w-4 text-green-400" />
                         <span className="text-green-400 font-medium">{t('signal.marketDataReady')}</span>
-                        {apiStatus === 'error' && (
-                          <span className="text-yellow-400 text-xs">({t('signal.demoData')})</span>
-                        )}
+                        <span className="text-green-300 text-xs">({getDataSourceText()})</span>
                       </div>
                       <button
                         onClick={fetchMarketData}
@@ -566,8 +581,12 @@ const Dashboard: React.FC = () => {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-300">{t('stats.dataSource')}:</span>
-                  <span className={`font-semibold ${apiStatus === 'connected' ? 'text-green-400' : 'text-yellow-400'}`}>
-                    {apiStatus === 'connected' ? t('stats.live') : t('stats.demo')}
+                  <span className={`font-semibold ${
+                    dataSource === 'tradingview' ? 'text-green-400' : 
+                    dataSource === 'api' ? 'text-blue-400' : 'text-yellow-400'
+                  }`}>
+                    {dataSource === 'tradingview' ? 'Chart' : 
+                     dataSource === 'api' ? 'API' : 'Demo'}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -620,6 +639,15 @@ const Dashboard: React.FC = () => {
                     <span className="text-gray-300">{t('market.candles4h')}:</span>
                     <span className="text-white">{marketData.timeframes['4h']?.length || 0}</span>
                   </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-300">Source:</span>
+                    <span className={`font-semibold ${
+                      dataSource === 'tradingview' ? 'text-green-400' : 
+                      dataSource === 'api' ? 'text-blue-400' : 'text-yellow-400'
+                    }`}>
+                      {getDataSourceText()}
+                    </span>
+                  </div>
                 </div>
               </div>
             )}
@@ -632,6 +660,7 @@ const Dashboard: React.FC = () => {
             symbol={selectedPair} 
             height={600}
             theme="dark"
+            onDataReady={handleChartDataReady}
           />
         </div>
 
