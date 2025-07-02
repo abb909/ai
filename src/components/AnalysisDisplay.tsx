@@ -68,35 +68,64 @@ const AnalysisDisplay: React.FC<AnalysisDisplayProps> = ({
   };
 
   const formatAnalysisForDisplay = (text: string) => {
-    // Split analysis into sections for better readability
-    const sections = text.split(/\n\n+/);
-    return sections.map((section, index) => {
-      // Check if section is a header (contains specific keywords)
-      const isHeader = /^(SIGNAL SUMMARY|MARKET ANALYSIS|RECOMMENDATION|CONCLUSION|RISK ASSESSMENT):/i.test(section);
-      
-      if (isHeader) {
-        const [title, ...content] = section.split(':');
+    const lines = text.split('\n').filter(line => line.trim() !== '');
+  
+    return lines.map((line, index) => {
+      // Section Headers like ### Title
+      if (line.startsWith('###')) {
         return (
-          <div key={index} className="mb-4">
-            <h3 className="text-blue-400 font-semibold text-lg mb-2 flex items-center space-x-2">
-              <BarChart3 className="h-4 w-4" />
-              <span>{title.trim()}</span>
-            </h3>
-            <div className="text-gray-300 leading-relaxed">
-              {content.join(':').trim()}
-            </div>
-          </div>
+          <h3
+            key={index}
+            className="text-blue-200 font-extrabold uppercase text-lg tracking-widest mt-6 mb-2 flex items-center space-x-2"
+          >
+            <BarChart3 className="h-4 w-4" />
+            <span>{line.replace(/^###\s*/, '').trim()}</span>
+          </h3>
         );
       }
-      
-      return (
-        <div key={index} className="mb-4 text-gray-300 leading-relaxed">
-          {section.trim()}
-        </div>
-      );
+  
+      // Sub-headers with bold labels between **...**
+      const subHeaderMatch = line.match(/^\-\s*\*\*(.+?)\*\*:\s*(.+)/);
+      if (subHeaderMatch) {
+        const [, label, content] = subHeaderMatch;
+        return (
+          <p key={index} className="text-gray-400 leading-relaxed ml-4">
+            <span className="font-bold text-blue-200">{label}:</span>{' '}
+            <span>{content}</span>
+          </p>
+        );
+      }
+  
+      // Highlight any **bold** words inside a normal line
+      const parts = line.split(/(\*\*.+?\*\*)/);
+return (
+  <p key={index} className="text-gray-400 leading-relaxed">
+    {parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        const cleanText = part.slice(2, -2);
+
+        let colorClass = 'text-blue-400'; // default
+        const lower = cleanText.toLowerCase();
+
+        if (lower.includes('take profit')) colorClass = 'text-green-400';
+        if (lower.includes('TP')) colorClass = 'text-green-400';
+        else if (lower.includes('stop loss')) colorClass = 'text-red-400';
+        else if (lower.includes('Entry Price')) colorClass = 'text-yellow-400';
+
+        return (
+          <span key={i} className={`font-bold ${colorClass}`}>
+            {cleanText}
+          </span>
+        );
+      }
+      return <span key={i}>{part}</span>;
+    })}
+  </p>
+);
+
     });
   };
-
+  
   const formatTelegramMessage = () => {
     const timestamp = new Date().toLocaleString();
     let message = `🤖 *AI Trading Signal*\n\n`;
