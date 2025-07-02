@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { getUserRecommendations } from '../services/firestore';
+import AnalysisRenderer  from '../components/AnalysisRenderer';
+
 import { Recommendation } from '../types';
 import { 
   TrendingUp, 
@@ -274,17 +276,10 @@ const SignalHistory: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-300 text-sm">Success Rate</p>
-                <p className="text-2xl font-bold text-purple-400">
-                  {stats.withSignals > 0 ? Math.round((stats.buySignals + stats.sellSignals) / stats.withSignals * 100) : 0}%
-                </p>
-              </div>
-              <Percent className="h-8 w-8 text-purple-400" />
-            </div>
-          </div>
+          <div className="grid md:grid-cols-4 gap-6 mb-8">
+  {/* Total, Buy, Sell, Hold cards remain */}
+</div>
+
         </div>
 
         {/* Filters */}
@@ -510,9 +505,9 @@ const SignalHistory: React.FC = () => {
                           <h4 className="text-sm font-medium text-gray-300 mb-2">
                             Full Analysis:
                           </h4>
-                          <div className="text-gray-100 text-sm leading-relaxed whitespace-pre-wrap">
-                            {rec.response}
-                          </div>
+                          <div className="bg-black/20 rounded-lg p-4">
+    <AnalysisRenderer text={rec.response} />
+  </div>
                         </div>
                       )}
                     </div>
