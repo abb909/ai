@@ -1,500 +1,87 @@
-import React, { useState } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import { 
-  Copy, 
-  Check, 
-  Send, 
-  TrendingUp, 
-  TrendingDown, 
-  Minus, 
-  Target,
-  BarChart3,
-  Clock,
-  DollarSign,
-  Percent,
-  AlertTriangle,
-  Crown,
-  Settings,
-  ExternalLink,
-  MessageSquare,
-  Zap
-} from 'lucide-react';
+import React from 'react';
 
-interface AnalysisDisplayProps {
-  analysis: string;
-  signal?: {
-    pair: string;
-    type: 'buy' | 'sell' | 'hold';
-    entry?: number;
-    stopLoss?: number;
-    takeProfit1?: number;
-    takeProfit2?: number;
-    probability?: number;
-  };
-  school: string;
-  timestamp?: Date;
-  onSendToTelegram?: (message: string) => Promise<void>;
+interface AnalysisProps {
+  text: string;
 }
 
-const AnalysisDisplay: React.FC<AnalysisDisplayProps> = ({
-  analysis,
-  signal,
-  school,
-  timestamp,
-  onSendToTelegram
-}) => {
-  const { user } = useAuth();
-  const [copied, setCopied] = useState(false);
-  const [copiedShort, setCopiedShort] = useState(false);
-  const [sendingToTelegram, setSendingToTelegram] = useState(false);
-  const [telegramSent, setTelegramSent] = useState(false);
+const parseInlineFormatting = (text: string) => {
+  const regex = /(\*\*[^*]+\*\*|\*[^*]+\*)/g;
+  const parts = text.split(regex);
 
-  const getSignalTypeIcon = (type: string) => {
-    switch (type) {
-      case 'buy': return <TrendingUp className="h-5 w-5 text-green-400" />;
-      case 'sell': return <TrendingDown className="h-5 w-5 text-red-400" />;
-      case 'hold': return <Minus className="h-5 w-5 text-yellow-400" />;
-      default: return <Target className="h-5 w-5 text-blue-400" />;
+  return parts.map((part, idx) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return (
+        <strong key={idx} className="font-semibold text-blue-600">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    } else if (part.startsWith('*') && part.endsWith('*')) {
+      return (
+        <em key={idx} className="italic text-gray-400">
+          {part.slice(1, -1)}
+        </em>
+      );
+    } else {
+      return part;
     }
-  };
-
-  const getSignalTypeColor = (type: string) => {
-    switch (type) {
-      case 'buy': return 'text-green-400 bg-green-400/10 border-green-400/20';
-      case 'sell': return 'text-red-400 bg-red-400/10 border-red-400/20';
-      case 'hold': return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20';
-      default: return 'text-blue-400 bg-blue-400/10 border-blue-400/20';
-    }
-  };
-
-  const formatAnalysisForDisplay = (text: string) => {
-    const lines = text.split('\n').filter(line => line.trim() !== '');
-  
-    return lines.map((line, index) => {
-      // Section Headers like ### Title
-      if (line.startsWith('###')) {
-        return (
-          <h3
-            key={index}
-            className="text-blue-200 font-extrabold uppercase text-lg tracking-widest mt-6 mb-2 flex items-center space-x-2"
-          >
-            <BarChart3 className="h-4 w-4" />
-            <span>{line.replace(/^###\s*/, '').trim()}</span>
-          </h3>
-        );
-      }
-  
-      // Sub-headers with bold labels between **...**
-      const subHeaderMatch = line.match(/^\-\s*\*\*(.+?)\*\*:\s*(.+)/);
-      if (subHeaderMatch) {
-        const [, label, content] = subHeaderMatch;
-        return (
-          <p key={index} className="text-gray-400 leading-relaxed ml-4">
-            <span className="font-bold text-blue-200">{label}:</span>{' '}
-            <span>{content}</span>
-          </p>
-        );
-      }
-  
-      // Highlight any **bold** words inside a normal line
-      const parts = line.split(/(\*\*.+?\*\*)/);
-return (
-  <p key={index} className="text-gray-400 leading-relaxed">
-    {parts.map((part, i) => {
-      if (part.startsWith('**') && part.endsWith('**')) {
-        const cleanText = part.slice(2, -2);
-
-        let colorClass = 'text-blue-400'; // default
-        const lower = cleanText.toLowerCase();
-
-        if (lower.includes('take profit')) colorClass = 'text-green-400';
-        if (lower.includes('TP')) colorClass = 'text-green-400';
-        else if (lower.includes('stop loss')) colorClass = 'text-red-400';
-        else if (lower.includes('Entry Price')) colorClass = 'text-yellow-400';
-
-        return (
-          <span key={i} className={`font-bold ${colorClass}`}>
-            {cleanText}
-          </span>
-        );
-      }
-      return <span key={i}>{part}</span>;
-    })}
-  </p>
-);
-
-    });
-  };
-  
-  const formatTelegramMessage = () => {
-    const timestamp = new Date().toLocaleString();
-    let message = `🤖 *AI Trading Signal*\n\n`;
-    
-    if (signal) {
-      const typeEmoji = signal.type === 'buy' ? '🟢' : signal.type === 'sell' ? '🔴' : '🟡';
-      message += `${typeEmoji} *${signal.type.toUpperCase()}* ${signal.pair}\n\n`;
-      
-      if (signal.entry) message += `📍 *Entry:* ${signal.entry}\n`;
-      if (signal.stopLoss) message += `🛑 *Stop Loss:* ${signal.stopLoss}\n`;
-      if (signal.takeProfit1) message += `🎯 *TP1:* ${signal.takeProfit1}\n`;
-      if (signal.takeProfit2) message += `🎯 *TP2:* ${signal.takeProfit2}\n`;
-      if (signal.probability) message += `📊 *Probability:* ${signal.probability}%\n`;
-      
-      message += `\n📚 *Analysis Method:* ${school}\n`;
-      message += `⏰ *Generated:* ${timestamp}\n\n`;
-    }
-    
-    message += `📋 *Full Analysis:*\n${analysis.replace(/\*\*/g, '*')}\n\n`;
-    message += `🔗 Generated by AI Trader Platform`;
-    
-    return message;
-  };
-
-  const formatShortSignal = () => {
-    if (!signal) {
-      return `AI Trading Signal - ${timestamp?.toLocaleString() || new Date().toLocaleString()}\n\n` +
-        `No structured signal data available.\n\n` +
-        `Generated by AI Trader Platform`;
-    }
-
-    const typeEmoji = signal.type === 'buy' ? '🟢' : signal.type === 'sell' ? '🔴' : '🟡';
-    let shortText = `${typeEmoji} ${signal.type.toUpperCase()} ${signal.pair}\n\n`;
-    
-    if (signal.entry) shortText += `📍 Entry: ${signal.entry}\n`;
-    if (signal.stopLoss) shortText += `🛑 SL: ${signal.stopLoss}\n`;
-    if (signal.takeProfit1) shortText += `🎯 TP1: ${signal.takeProfit1}\n`;
-    if (signal.takeProfit2) shortText += `🎯 TP2: ${signal.takeProfit2}\n`;
-    if (signal.probability) shortText += `📊 Probability: ${signal.probability}%\n`;
-    
-    // Calculate Risk:Reward if possible
-    if (signal.entry && signal.stopLoss && signal.takeProfit1) {
-      const risk = Math.abs(signal.entry - signal.stopLoss);
-      const reward = Math.abs(signal.takeProfit1 - signal.entry);
-      const ratio = (reward / risk).toFixed(2);
-      shortText += `⚖️ R:R: 1:${ratio}\n`;
-    }
-    
-    shortText += `\n📚 Method: ${school}\n`;
-    shortText += `⏰ ${timestamp?.toLocaleString() || new Date().toLocaleString()}\n\n`;
-    shortText += `🔗 AI Trader Platform`;
-    
-    return shortText;
-  };
-
-  const copyToClipboard = async () => {
-    try {
-      const fullText = `AI Trading Analysis - ${timestamp?.toLocaleString() || new Date().toLocaleString()}\n\n` +
-        `Trading Pair: ${signal?.pair || 'N/A'}\n` +
-        `Signal Type: ${signal?.type?.toUpperCase() || 'N/A'}\n` +
-        `School: ${school}\n\n` +
-        (signal ? `SIGNAL DETAILS:\n` +
-          `Entry: ${signal.entry || 'N/A'}\n` +
-          `Stop Loss: ${signal.stopLoss || 'N/A'}\n` +
-          `Take Profit 1: ${signal.takeProfit1 || 'N/A'}\n` +
-          `Take Profit 2: ${signal.takeProfit2 || 'N/A'}\n` +
-          `Probability: ${signal.probability || 'N/A'}%\n\n` : '') +
-        `FULL ANALYSIS:\n${analysis}\n\n` +
-        `Generated by AI Trader Platform`;
-      
-      await navigator.clipboard.writeText(fullText);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      console.error('Failed to copy to clipboard:', error);
-    }
-  };
-
-  const copyShortSignal = async () => {
-    try {
-      const shortText = formatShortSignal();
-      await navigator.clipboard.writeText(shortText);
-      setCopiedShort(true);
-      setTimeout(() => setCopiedShort(false), 2000);
-    } catch (error) {
-      console.error('Failed to copy short signal:', error);
-    }
-  };
-
-  const sendToTelegram = async () => {
-    if (!onSendToTelegram) return;
-    
-    setSendingToTelegram(true);
-    try {
-      const message = formatTelegramMessage();
-      await onSendToTelegram(message);
-      setTelegramSent(true);
-      setTimeout(() => setTelegramSent(false), 3000);
-    } catch (error) {
-      console.error('Failed to send to Telegram:', error);
-    } finally {
-      setSendingToTelegram(false);
-    }
-  };
-
-  const calculateRiskReward = () => {
-    if (!signal?.entry || !signal?.stopLoss || !signal?.takeProfit1) return null;
-    
-    const risk = Math.abs(signal.entry - signal.stopLoss);
-    const reward = Math.abs(signal.takeProfit1 - signal.entry);
-    const ratio = reward / risk;
-    
-    return {
-      risk: risk.toFixed(2),
-      reward: reward.toFixed(2),
-      ratio: ratio.toFixed(2)
-    };
-  };
-
-  const riskReward = calculateRiskReward();
-
-  return (
-    <div className="space-y-6">
-      {/* Signal Summary Card */}
-      {signal && (
-        <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center space-x-3">
-              <div className={`px-4 py-2 rounded-full text-sm font-medium border flex items-center space-x-2 ${getSignalTypeColor(signal.type)}`}>
-                {getSignalTypeIcon(signal.type)}
-                <span className="uppercase font-bold">{signal.type}</span>
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold text-white">{signal.pair}</h2>
-                <p className="text-gray-400 text-sm">{school} • {timestamp?.toLocaleString()}</p>
-              </div>
-            </div>
-            
-            {signal.probability && (
-              <div className="text-right">
-                <div className="text-3xl font-bold text-blue-400">{signal.probability}%</div>
-                <div className="text-gray-400 text-sm">Confidence</div>
-              </div>
-            )}
-          </div>
-
-          {/* Signal Metrics Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-            {signal.entry && (
-              <div className="bg-black/20 rounded-lg p-4 text-center">
-                <div className="text-gray-400 text-xs uppercase tracking-wide mb-1">Entry Price</div>
-                <div className="text-white font-bold text-lg">{signal.entry}</div>
-              </div>
-            )}
-            
-            {signal.stopLoss && (
-              <div className="bg-black/20 rounded-lg p-4 text-center">
-                <div className="text-gray-400 text-xs uppercase tracking-wide mb-1">Stop Loss</div>
-                <div className="text-red-400 font-bold text-lg">{signal.stopLoss}</div>
-              </div>
-            )}
-            
-            {signal.takeProfit1 && (
-              <div className="bg-black/20 rounded-lg p-4 text-center">
-                <div className="text-gray-400 text-xs uppercase tracking-wide mb-1">Take Profit 1</div>
-                <div className="text-green-400 font-bold text-lg">{signal.takeProfit1}</div>
-              </div>
-            )}
-            
-            {signal.takeProfit2 && (
-              <div className="bg-black/20 rounded-lg p-4 text-center">
-                <div className="text-gray-400 text-xs uppercase tracking-wide mb-1">Take Profit 2</div>
-                <div className="text-green-400 font-bold text-lg">{signal.takeProfit2}</div>
-              </div>
-            )}
-            
-            {riskReward && (
-              <div className="bg-black/20 rounded-lg p-4 text-center">
-                <div className="text-gray-400 text-xs uppercase tracking-wide mb-1">Risk:Reward</div>
-                <div className="text-purple-400 font-bold text-lg">1:{riskReward.ratio}</div>
-              </div>
-            )}
-          </div>
-
-          {/* Risk Assessment */}
-          {riskReward && (
-            <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-4">
-              <div className="flex items-center space-x-2 mb-2">
-                <AlertTriangle className="h-4 w-4 text-purple-400" />
-                <span className="text-purple-400 font-semibold">Risk Assessment</span>
-              </div>
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div>
-                  <span className="text-gray-400">Risk: </span>
-                  <span className="text-red-400 font-semibold">{riskReward.risk} pips</span>
-                </div>
-                <div>
-                  <span className="text-gray-400">Reward: </span>
-                  <span className="text-green-400 font-semibold">{riskReward.reward} pips</span>
-                </div>
-                <div>
-                  <span className="text-gray-400">R:R Ratio: </span>
-                  <span className="text-purple-400 font-semibold">1:{riskReward.ratio}</span>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Professional Analysis Display */}
-      <div className="bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-3">
-            <BarChart3 className="h-6 w-6 text-blue-400" />
-            <h3 className="text-xl font-semibold text-white">Professional Analysis</h3>
-          </div>
-          
-          <div className="flex items-center space-x-3">
-            {/* Copy Short Signal Button */}
-            <button
-              onClick={copyShortSignal}
-              className="flex items-center space-x-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-medium transition-all"
-              title="Copy short signal summary without full analysis"
-            >
-              {copiedShort ? (
-                <>
-                  <Check className="h-4 w-4" />
-                  <span>Copied!</span>
-                </>
-              ) : (
-                <>
-                  <Zap className="h-4 w-4" />
-                  <span>Copy Signal</span>
-                </>
-              )}
-            </button>
-
-            {/* Copy Full Analysis Button */}
-            <button
-              onClick={copyToClipboard}
-              className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all"
-            >
-              {copied ? (
-                <>
-                  <Check className="h-4 w-4" />
-                  <span>Copied!</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="h-4 w-4" />
-                  <span>Copy Analysis</span>
-                </>
-              )}
-            </button>
-
-            {/* Telegram Button - Elite Only */}
-            {user?.plan === 'elite' && onSendToTelegram && (
-              <button
-                onClick={sendToTelegram}
-                disabled={sendingToTelegram}
-                className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg font-medium transition-all disabled:opacity-50"
-              >
-                {sendingToTelegram ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Sending...</span>
-                  </>
-                ) : telegramSent ? (
-                  <>
-                    <Check className="h-4 w-4" />
-                    <span>Sent!</span>
-                  </>
-                ) : (
-                  <>
-                    <Send className="h-4 w-4" />
-                    <span>Send to Telegram</span>
-                  </>
-                )}
-              </button>
-            )}
-
-            {/* Elite Feature Badge */}
-            {user?.plan !== 'elite' && (
-              <div className="flex items-center space-x-2 px-3 py-2 bg-purple-500/20 border border-purple-500/30 rounded-lg">
-                <Crown className="h-4 w-4 text-purple-400" />
-                <span className="text-purple-400 text-sm font-medium">Elite Feature</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Analysis Content */}
-        <div className="bg-black/20 rounded-lg p-6">
-          <div className="prose prose-invert max-w-none">
-            {formatAnalysisForDisplay(analysis)}
-          </div>
-        </div>
-
-        {/* Analysis Metadata */}
-        <div className="mt-6 pt-4 border-t border-white/20">
-          <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-gray-400">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <Clock className="h-4 w-4" />
-                <span>Generated: {timestamp?.toLocaleString() || new Date().toLocaleString()}</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Settings className="h-4 w-4" />
-                <span>Method: {school}</span>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-2 text-blue-400">
-              <MessageSquare className="h-4 w-4" />
-              <span>AI-Powered Analysis</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Copy Button Info */}
-      <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-4">
-        <div className="flex items-start space-x-3">
-          <Zap className="h-5 w-5 text-orange-400 mt-0.5" />
-          <div className="flex-1">
-            <h3 className="text-orange-400 font-semibold mb-2">Quick Signal Copy</h3>
-            <p className="text-gray-300 text-sm">
-              Use the <strong>"Copy Signal"</strong> button to copy just the essential signal information (pair, type, entry, SL, TP, probability) without the full analysis. Perfect for quick sharing or notes.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Telegram Setup Notice for Elite Users */}
-      {user?.plan === 'elite' && !onSendToTelegram && (
-        <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-6">
-          <div className="flex items-start space-x-3">
-            <Crown className="h-6 w-6 text-purple-400 mt-1" />
-            <div className="flex-1">
-              <h3 className="text-purple-400 font-semibold mb-2">Elite Feature: Telegram Integration</h3>
-              <p className="text-gray-300 text-sm mb-4">
-                As an Elite user, you can send analysis directly to your Telegram channel. Configure your Telegram settings to enable this feature.
-              </p>
-              <a
-                href="/settings"
-                className="inline-flex items-center space-x-2 text-purple-400 hover:text-purple-300 text-sm font-medium"
-              >
-                <Settings className="h-4 w-4" />
-                <span>Configure Telegram Settings</span>
-                <ExternalLink className="h-3 w-3" />
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Disclaimer */}
-      <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
-        <div className="flex items-start space-x-2">
-          <AlertTriangle className="h-4 w-4 text-yellow-400 mt-0.5 flex-shrink-0" />
-          <div className="text-yellow-300 text-xs">
-            <p className="font-semibold mb-1">Risk Disclaimer:</p>
-            <p>This analysis is for educational purposes only and should not be considered as financial advice. Trading involves substantial risk of loss. Always conduct your own research and consider consulting with qualified financial professionals before making trading decisions.</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  });
 };
 
-export default AnalysisDisplay;
+const AnalysisRenderer: React.FC<AnalysisProps> = ({ text }) => {
+  const lines = text.split('\n');
+
+  const elements: React.ReactNode[] = [];
+  let listBuffer: string[] = [];
+
+  const flushListBuffer = () => {
+    if (listBuffer.length > 0) {
+      elements.push(
+        <ul key={`list-${elements.length}`} className="list-disc list-inside mb-2 text-gray-300">
+          {listBuffer.map((item, idx) => (
+            <li key={idx}>{parseInlineFormatting(item)}</li>
+          ))}
+        </ul>
+      );
+      listBuffer = [];
+    }
+  };
+
+  lines.forEach((line, index) => {
+    if (line.startsWith('### ')) {
+      flushListBuffer();
+      elements.push(
+        <h3
+          key={index}
+          className="text-2xl font-extrabold uppercase mt-6 mb-3 border-b border-blue-600 pb-1 text-blue-400"
+        >
+          {line.replace('### ', '')}
+        </h3>
+      );
+    } else if (line.startsWith('## ')) {
+      flushListBuffer();
+      elements.push(
+        <h4 key={index} className="text-lg font-bold mt-4 mb-2 text-green-400">
+          {line.replace('## ', '')}
+        </h4>
+      );
+    } else if (line.startsWith('- ')) {
+      listBuffer.push(line.substring(2));
+    } else if (line.trim() === '') {
+      flushListBuffer();
+      elements.push(<br key={index} />);
+    } else {
+      flushListBuffer();
+      elements.push(
+        <p key={index} className="mb-2 text-gray-300">
+          {parseInlineFormatting(line)}
+        </p>
+      );
+    }
+  });
+
+  flushListBuffer();
+
+  return <div className="leading-relaxed whitespace-pre-wrap">{elements}</div>;
+};
+
+export default AnalysisRenderer;
