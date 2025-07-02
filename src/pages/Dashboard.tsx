@@ -653,17 +653,6 @@ const Dashboard: React.FC = () => {
             )}
           </div>
         </div>
-
-        {/* TradingView Chart Widget */}
-        <div className="mt-8">
-          <TradingViewChart 
-            symbol={selectedPair} 
-            height={600}
-            theme="dark"
-            onDataReady={handleChartDataReady}
-          />
-        </div>
-
         {/* Analysis Display */}
         {(lastRecommendation || lastSignal) && (
           <div className="mt-8">
@@ -676,6 +665,17 @@ const Dashboard: React.FC = () => {
             />
           </div>
         )}
+        {/* TradingView Chart Widget */}
+        <div className="mt-8">
+          <TradingViewChart 
+            symbol={selectedPair} 
+            height={600}
+            theme="dark"
+            onDataReady={handleChartDataReady}
+          />
+        </div>
+
+        
       </div>
     </div>
   );
