@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { getUserRecommendations } from '../services/firestore';
+import AnalysisRenderer from '../components/AnalysisRenderer';
+
 import { Recommendation } from '../types';
 import { 
   Clock, 
@@ -429,7 +431,7 @@ const History: React.FC = () => {
                         AI Recommendation:
                       </h4>
                       <div className={`text-gray-100 ${isExpanded ? 'whitespace-pre-wrap' : 'line-clamp-3'}`}>
-                        {rec.response}
+                      <AnalysisRenderer text={rec.response} />
                       </div>
                       
                       {!isExpanded && rec.response.length > 200 && (
